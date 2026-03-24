@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>สมัครสมาชิก | ระบบจองอาหารนักศึกษา</title>
     <style>
         body {
@@ -114,6 +115,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 15px;
         }
 
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 18px;
+            background-color: #bdc3c7;
+            color: #2c3e50;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: background-color 0.2s ease;
+        }
+
+        .back-button:hover {
+            background-color: #95a5a6;
+        }
+
         @media screen and (max-width: 480px) {
             .register-container {
                 margin: 30px 20px;
@@ -128,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
+    <a href="login.php" class="back-button">← ย้อนกลับ</a>
     <div class="register-container">
         <h2>สมัครสมาชิกระบบจองอาหาร</h2>
         <?php if (!empty($error)): ?>
@@ -151,8 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="password" name="ConfirmPassword" required>
             </div>
             <div class="button-group">
-                <button type="submit">สมัคร</button>
-                <button type="button" onclick="window.location.href='login.php'">ย้อนกลับ</button>
+                <button type="submit" style="width: 100%;">สมัคร</button>
             </div>
         </form>
     </div>

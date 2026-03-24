@@ -36,16 +36,16 @@ $current_time = time();
 $connect->begin_transaction();
 
 // คำนวณคิวของวันนี้ สำหรับร้านนี้
-$today_start = strtotime('today midnight');
-$today_end = $today_start + 86400;
+$current_date = date('Y-m-d');
+$current_time = date('H:i:s');
 
 // นับบิลที่สั่งซื้อวันนี้ของร้านนี้ เพื่อกำหนดลำดับคิว
-$queue_result = $connect->query("SELECT COUNT(DISTINCT Dates) as count FROM orderss WHERE ShopID = $shopid AND Dates >= $today_start AND Dates < $today_end");
+$queue_result = $connect->query("SELECT COUNT(DISTINCT Times) as count FROM orderss WHERE ShopID = $shopid AND Dates = '$current_date'");
 $queue_row = $queue_result->fetch_assoc();
 $queue_number = $queue_row['count'] + 1;
 
 // นับจำนวนคิวที่ยังไม่เสร็จ (รอคิว) ก่อนบันทึกใบเสร็จใหม่
-$wait_result = $connect->query("SELECT COUNT(DISTINCT Dates) as wait_count FROM orderss WHERE ShopID = $shopid AND Status != 'completed'");
+$wait_result = $connect->query("SELECT COUNT(DISTINCT CONCAT(Dates, Times)) as wait_count FROM orderss WHERE ShopID = $shopid AND Status != 'completed'");
 $wait_row = $wait_result->fetch_assoc();
 $wait_queue = $wait_row['wait_count'];
 
@@ -80,10 +80,10 @@ try {
             ];
 
             // บันทึกคำสั่งซื้อ
-            $sql = "INSERT INTO orderss (UserID, ShopID, FoodID, Dates, OrderQuantity, TotalAmount, TotalPriceIncluded) 
+            $sql = "INSERT INTO orderss (UserID, ShopID, FoodID, Dates, Times, TotalAmount, TotalPriceIncluded) 
                     VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $connect->prepare($sql);
-            $stmt->bind_param("iiiisii", $userid, $shopid, $foodid, $current_time, $quantity, $quantity, $subtotal);
+            $stmt->bind_param("iiisssi", $userid, $shopid, $foodid, $current_date, $current_time, $quantity, $subtotal);
             $stmt->execute();
             $stmt->close();
 
@@ -102,7 +102,7 @@ try {
         'shop_id' => $shopid,
         'shop_name' => $shop['ShopName'],
         'queue_number' => $queue_number,
-        'time' => date('d/m/Y H:i', $current_time),
+        'time' => date('d/m/Y H:i', strtotime($current_date . ' ' . $current_time)),
         'items' => $order_items,
         'total' => $total
     ];
@@ -111,7 +111,7 @@ try {
     $receiptData = [
         'shop_name' => $shop['ShopName'],
         'queue_number' => $queue_number,
-        'date' => date('d/m/Y H:i', $current_time),
+        'date' => date('d/m/Y H:i', strtotime($current_date . ' ' . $current_time)),
         'total' => $total,
         'items' => $order_items
     ];
@@ -136,6 +136,7 @@ try {
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ใบเสร็จ</title>
     <style>
         body {
@@ -157,6 +158,7 @@ try {
             padding: 25px;
             position: relative;
             overflow: hidden;
+            border: 2px solid #000;
         }
 
         .receipt-header {
@@ -218,7 +220,11 @@ try {
         }
 
         .align-right {
-            text-align: right;
+            text-align: right !important;
+        }
+
+        .align-center {
+            text-align: center !important;
         }
 
         .receipt-total {
@@ -286,6 +292,10 @@ try {
             border-top: none;
             border-radius: 0 0 15px 0;
         }
+
+        @media (max-width: 480px) {
+            .receipt-container { width: 90%; max-width: 350px; padding: 20px; box-sizing: border-box; }
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -307,14 +317,14 @@ try {
         <div class="receipt-info">
             <div><strong>ShopID:</strong> <?php echo $shopid; ?></div>
             <div><strong>ชื่อร้าน:</strong> <?php echo htmlspecialchars($shop['ShopName']); ?></div>
-            <div><strong>วันที่:</strong> <?php echo date('d/m/Y H:i', $current_time); ?></div>
+            <div><strong>วันที่:</strong> <?php echo date('d/m/Y H:i', strtotime($current_date . ' ' . $current_time)); ?></div>
         </div>
 
         <table class="receipt-table">
             <thead>
                 <tr>
                     <th>รายการ</th>
-                    <th>จำนวน</th>
+                    <th class="align-center">จำนวน</th>
                     <th class="align-right">ราคา</th>
                     <th class="align-right">รวม</th>
                 </tr>
@@ -323,7 +333,7 @@ try {
                 <?php foreach ($order_items as $index => $item): ?>
                     <tr>
                         <td><?php echo ($index + 1) . '. ' . htmlspecialchars($item['name']); ?></td>
-                        <td><?php echo $item['quantity']; ?></td>
+                        <td class="align-center"><?php echo $item['quantity']; ?></td>
                         <td class="align-right"><?php echo number_format($item['price']); ?></td>
                         <td class="align-right"><?php echo number_format($item['subtotal']); ?></td>
                     </tr>

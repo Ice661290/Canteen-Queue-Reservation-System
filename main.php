@@ -46,6 +46,7 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>หน้าหลัก | ระบบจองอาหาร</title>
     <style>
         body {
@@ -63,6 +64,7 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #d2691e;
         }
 
         .top-right-profile {
@@ -192,6 +194,7 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
         .content {
             display: flex;
             gap: 20px;
+            flex-wrap: wrap;
         }
 
         .order-status {
@@ -257,6 +260,49 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
         .order-status-badge {
             display: none;
         }
+
+        @media (max-width: 768px) {
+            .dashboard { width: 90%; margin: 20px auto; padding: 15px; }
+            .restaurant-list { flex: 1 1 100%; padding-bottom: 60px; }
+            .shop-card { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .shop-card button { width: 100%; }
+        }
+
+        /* Custom Modals */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+        }
+        .modal-container {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            background-color: #fcfcfc;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            border: none;
+            z-index: 2001;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #555;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .modal-close:hover { color: #e74c3c; }
     </style>
 </head>
 
@@ -299,33 +345,66 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
         <div class="order-status-badge" id="order-status-badge">0</div>
     </div>
 
+    <!-- Custom Modal Structures -->
+    <div class="modal-overlay" id="mainModalOverlay">
+        <div class="modal-container">
+            <button class="modal-close" onclick="closeMainModal()">&times;</button>
+            <div id="mainModalContent"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="customAlertOverlay">
+        <div class="modal-container" style="max-width: 400px; text-align: center; background: #ffffff;">
+            <h3 id="customAlertTitle" style="color: #d2691e; margin-top: 0;">แจ้งเตือน</h3>
+            <p id="customAlertMessage" style="font-size: 16px; color: #333; margin: 20px 0;"></p>
+            <button onclick="closeCustomAlert()" style="padding: 10px 30px; border: none; background-color: #d2691e; color: white; border-radius: 5px; cursor: pointer;">ตกลง</button>
+        </div>
+    </div>
+
     <script>
+        // ฟังก์ชันจัดการ Custom Modals
+        function showCustomAlert(msg) {
+            document.getElementById('customAlertMessage').textContent = msg;
+            document.getElementById('customAlertOverlay').style.display = 'block';
+        }
+        function closeCustomAlert() {
+            document.getElementById('customAlertOverlay').style.display = 'none';
+        }
+        function openMainModal(htmlContent) {
+            document.getElementById('mainModalContent').innerHTML = htmlContent;
+            document.getElementById('mainModalOverlay').style.display = 'block';
+        }
+        function closeMainModal() {
+            document.getElementById('mainModalOverlay').style.display = 'none';
+        }
+
         // ฟังก์ชันแสดงประวัติใบเสร็จ (ดึงจากฐานข้อมูลตรงๆ)
         function showReceiptHistory() {
             const receipts = <?php
             $receipt_query = $connect->query("
-                SELECT o.ShopID, s.ShopName, o.Dates, SUM(o.TotalPriceIncluded) as total, COUNT(o.OrderID) as items_count 
+                SELECT o.ShopID, s.ShopName, o.Dates, o.Times, SUM(o.TotalPriceIncluded) as total, COUNT(o.OrderID) as items_count 
                 FROM orderss o 
                 JOIN shop s ON o.ShopID = s.ShopID 
                 WHERE o.UserID = {$_SESSION['userid']} AND o.Status = 'completed'
-                GROUP BY o.ShopID, o.Dates 
-                ORDER BY o.Dates DESC
+                GROUP BY o.ShopID, o.Dates, o.Times 
+                ORDER BY o.Dates DESC, o.Times DESC
             ");
             echo json_encode($receipt_query->fetch_all(MYSQLI_ASSOC));
             ?>;
 
             if (receipts.length === 0) {
-                alert('ยังไม่มีประวัติใบเสร็จ');
+                showCustomAlert('ยังไม่มีประวัติใบเสร็จ');
             } else {
-                let historyHTML = '<div style="padding:20px;max-width:500px;margin:auto;">';
-                historyHTML += '<h2 style="color:#d2691e;text-align:center;">ประวัติใบเสร็จ</h2>';
+                let historyHTML = '<div style="padding:10px;">';
+                historyHTML += '<h2 style="color:#d2691e;text-align:center;margin-top:0;">ประวัติใบเสร็จ</h2>';
 
                 receipts.forEach((receipt, index) => {
-                    const dateObj = new Date(receipt.Dates * 1000);
-                    const dateStr = dateObj.toLocaleDateString('th-TH') + ' ' + dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                    const dParts = receipt.Dates.split('-');
+                    const tParts = receipt.Times.split(':');
+                    const dateStr = `${dParts[2]}/${dParts[1]}/${dParts[0]} ${tParts[0]}:${tParts[1]}`;
 
-                    historyHTML += `<div style="border:1px solid #ddd;border-radius:8px;padding:15px;margin-bottom:15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">`;
-                    historyHTML += `<h3 style="margin-top:0; color:#333;">ใบเสร็จ #${index + 1}</h3>`;
+                    historyHTML += `<div style="border:1px solid #d2691e;border-radius:8px;padding:15px;margin-bottom:15px; background-color:#fff8e1; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">`;
+                    historyHTML += `<h3 style="margin-top:0; color:#d2691e;">ใบเสร็จ #${index + 1}</h3>`;
                     historyHTML += `<p><strong>ร้าน:</strong> ${receipt.ShopName}</p>`;
                     historyHTML += `<p><strong>วันที่:</strong> ${dateStr}</p>`;
                     historyHTML += `<p><strong>จำนวนรายการ:</strong> ${receipt.items_count} อย่าง</p>`;
@@ -335,20 +414,7 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
 
                 historyHTML += '</div>';
 
-                const popup = window.open('', 'receiptHistory', 'width=600,height=700,scrollbars=yes');
-                popup.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>ประวัติใบเสร็จ</title>
-                    <style>
-                        body { font-family: 'Sarabun', sans-serif; margin:0; padding:0; background:#f5f5f5; }
-                        div { background: white; }
-                    </style>
-                </head>
-                <body>${historyHTML}</body>
-                </html>
-            `);
+                openMainModal(historyHTML);
             }
         }
 
@@ -369,31 +435,46 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
         function showOrderStatus() {
             const orders = <?php
             $order_statuses = $connect->query("
-                SELECT o.ShopID, s.ShopName, o.Dates, o.Status, SUM(o.TotalPriceIncluded) as total, 
-                GROUP_CONCAT(CONCAT(f.FoodName, ' (', o.OrderQuantity, ')') SEPARATOR ', ') as items 
+                SELECT o.ShopID, s.ShopName, o.Dates, o.Times, o.Status, SUM(o.TotalPriceIncluded) as total, 
+                GROUP_CONCAT(CONCAT(f.FoodName, ' (', o.TotalAmount, ')') SEPARATOR ', ') as items 
                 FROM orderss o
                 JOIN shop s ON o.ShopID = s.ShopID
                 JOIN foodmenu f ON o.FoodID = f.FoodID
                 WHERE o.UserID = {$_SESSION['userid']} AND o.Status != 'completed'
-                GROUP BY o.ShopID, o.Dates
-                ORDER BY o.Dates DESC
+                GROUP BY o.ShopID, o.Dates, o.Times
+                ORDER BY o.Dates DESC, o.Times DESC
             ");
-            echo json_encode($order_statuses->fetch_all(MYSQLI_ASSOC));
+            
+            $orders_list = [];
+            while($row = $order_statuses->fetch_assoc()) {
+                $shopid = $row['ShopID'];
+                $order_date = $row['Dates'];
+                $order_time = $row['Times'];
+                
+                $q_res = $connect->query("SELECT COUNT(DISTINCT Times) as count FROM orderss WHERE ShopID = $shopid AND Dates = '$order_date' AND Times <= '$order_time'");
+                $q_row = $q_res->fetch_assoc();
+                $row['queue_number'] = $q_row['count'];
+                
+                $orders_list[] = $row;
+            }
+            
+            echo json_encode($orders_list);
             ?>;
 
             if (orders.length === 0) {
-                alert('ไม่มีคำสั่งซื้อที่กำลังดำเนินการในขณะนี้');
+                showCustomAlert('ไม่มีคำสั่งซื้อที่กำลังดำเนินการในขณะนี้');
             } else {
-                let statusHTML = '<div style="padding:20px;max-width:500px;margin:auto;">';
-                statusHTML += '<h2 style="color:#d2691e;text-align:center;">สถานะคำสั่งซื้อที่กำลังทำ</h2>';
+                let statusHTML = '<div style="padding:10px;">';
+                statusHTML += '<h2 style="color:#d2691e;text-align:center;margin-top:0;">สถานะคำสั่งซื้อที่กำลังทำ</h2>';
 
                 orders.forEach((order, index) => {
-                    const dateObj = new Date(order.Dates * 1000);
-                    const dateStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                    const dParts = order.Dates.split('-');
+                    const tParts = order.Times.split(':');
+                    const dateStr = `${tParts[0]}:${tParts[1]}`;
 
                     statusHTML += `
-                    <div style="border:1px solid #ddd;border-radius:8px;padding:15px;margin-bottom:15px;background-color:#fff8e1;color:#333;box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top:0; color:#d2691e;">คิวที่ ${index + 1} - ${order.ShopName}</h3>
+                    <div style="border:1px solid #d2691e;border-radius:8px;padding:15px;margin-bottom:15px;background-color:#fff8e1;color:#333;box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <h3 style="margin-top:0; color:#d2691e;">คิวที่ ${order.queue_number} - ${order.ShopName}</h3>
                         <p><strong>เวลาสั่ง:</strong> ${dateStr}</p>
                         <p><strong>รายการ:</strong> ${order.items}</p>
                         <p><strong>ยอดชำระ:</strong> ${parseFloat(order.total).toLocaleString()} บาท</p>
@@ -404,20 +485,7 @@ if (isset($_SESSION['user_notify_' . $_SESSION['userid']])) {
 
                 statusHTML += '</div>';
 
-                const popup = window.open('', 'orderStatus', 'width=600,height=700,scrollbars=yes');
-                popup.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>สถานะคำสั่งซื้อ</title>
-                    <style>
-                        body { font-family: 'Sarabun', sans-serif; margin:0; padding:0; background:#fcfcfc;}
-                        div { background: white; }
-                    </style>
-                </head>
-                <body>${statusHTML}</body>
-                </html>
-            `);
+                openMainModal(statusHTML);
             }
         }
 

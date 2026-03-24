@@ -60,7 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <head>
     <meta charset="UTF-8">
-    <title>เข้าสู่ระบบ | ระบบจองอาหารนักศึกษา</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ | ระบบจองคิวอาหาร</title>
     <style>
         body {
             font-family: 'Sarabun', sans-serif;
@@ -147,6 +148,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .register-link a:hover {
             text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .login-wrapper {
+                margin: 20px;
+                padding: 20px;
+            }
         }
     </style>
 </head>

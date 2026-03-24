@@ -56,24 +56,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         header("Location: shop_dashboard.php?action=menu");
         exit();
-    } elseif (isset($_POST['complete_order']) && isset($_POST['userid']) && isset($_POST['date'])) {
+    } elseif (isset($_POST['complete_order']) && isset($_POST['userid']) && isset($_POST['date']) && isset($_POST['time'])) {
         $userid = (int) $_POST['userid'];
-        $date = (int) $_POST['date'];
+        $date = $_POST['date'];
+        $time = $_POST['time'];
 
-        // Update the status to 'completed'
-        $update_result = $connect->query("UPDATE orderss SET Status = 'completed' WHERE UserID = $userid AND ShopID = $shopid AND Dates = $date");
+        $stmt = $connect->prepare("UPDATE orderss SET Status = 'completed' WHERE UserID = ? AND ShopID = ? AND Dates = ? AND Times = ?");
+        $stmt->bind_param("iiss", $userid, $shopid, $date, $time);
+        $update_result = $stmt->execute();
 
         if ($update_result) {
-            // Fetch completed order details
-            $completed_orders = $connect->query("
+            $stmt2 = $connect->prepare("
                 SELECT o.*, f.FoodName, s.ShopName 
                 FROM orderss o
                 JOIN foodmenu f ON o.FoodID = f.FoodID
                 JOIN shop s ON o.ShopID = s.ShopID
-                WHERE o.UserID = $userid AND o.ShopID = $shopid AND o.Dates = $date
+                WHERE o.UserID = ? AND o.ShopID = ? AND o.Dates = ? AND o.Times = ?
             ");
+            $stmt2->bind_param("iiss", $userid, $shopid, $date, $time);
+            $stmt2->execute();
+            $completed_orders = $stmt2->get_result();
 
-            // Store completed orders in session for "ประวัติคิวอาหาร"
             if (!isset($_SESSION['completed_orders'])) {
                 $_SESSION['completed_orders'] = [];
             }
@@ -82,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['completed_orders'][] = [
                     'shop_name' => $order['ShopName'],
                     'food_name' => $order['FoodName'],
-                    'queue_number' => substr($order['UserID'], -2) . substr($order['Dates'], -4),
-                    'date' => date('d/m/Y H:i', $order['Dates']),
+                    'queue_number' => substr($order['UserID'], -2) . str_replace(':', '', substr($order['Times'], 0, 5)),
+                    'date' => date('d/m/Y', strtotime($order['Dates'])) . ' ' . date('H:i', strtotime($order['Times'])),
                     'total' => $order['TotalPriceIncluded']
                 ];
             }
@@ -104,24 +107,30 @@ $orders = $connect->query("
     JOIN users u ON o.UserID = u.UserID
     JOIN foodmenu f ON o.FoodID = f.FoodID
     WHERE o.ShopID = $shopid
-    ORDER BY o.Dates ASC
+    ORDER BY o.Dates ASC, o.Times ASC
 ");
 
 $grouped_orders = [];
 while ($order = $orders->fetch_assoc()) {
-    $key = $order['UserID'] . '-' . $order['Dates'];
+    $key = $order['UserID'] . '-' . $order['Dates'] . '-' . $order['Times'];
     if (!isset($grouped_orders[$key])) {
+        $order_date = $order['Dates'];
+        $order_time = $order['Times'];
+        $q_res = $connect->query("SELECT COUNT(DISTINCT Times) as c FROM orderss WHERE ShopID = $shopid AND Dates = '$order_date' AND Times <= '$order_time'");
+        $q_row = $q_res->fetch_assoc();
+        
         $grouped_orders[$key] = [
             'userid' => $order['UserID'],
             'username' => $order['UserName'],
             'date' => $order['Dates'],
+            'time' => $order['Times'],
             'items' => [],
             'total' => 0,
-            'queue_number' => substr($order['UserID'], -2) . substr($order['Dates'], -4),
+            'queue_number' => $q_row['c'],
             'status' => $order['Status']
         ];
     }
-    $grouped_orders[$key]['items'][] = $order['FoodName'] . ' (' . $order['OrderQuantity'] . ')';
+    $grouped_orders[$key]['items'][] = $order['FoodName'] . ' (' . $order['TotalAmount'] . ')';
     $grouped_orders[$key]['total'] += $order['TotalPriceIncluded'];
 }
 
@@ -140,6 +149,8 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
 <html>
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>จัดการร้านค้า - <?php echo $shop['ShopName']; ?></title>
     <style>
         body {
@@ -210,15 +221,13 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
         }
 
         .food-list {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
-            justify-content: space-between;
             margin-top: 20px;
         }
 
         .food-item-box {
-            width: 30%;
             border: 1px solid #ddd;
             border-radius: 10px;
             background-color: rgba(0, 0, 0, 0.4);
@@ -386,6 +395,48 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
         .queue-table tr:hover {
             background-color: #f1f1f1;
         }
+
+        @media (max-width: 768px) {
+            .dashboard-container { margin: 10px; padding: 15px; }
+            .food-list { grid-template-columns: 1fr; }
+            .action-buttons { flex-direction: column; gap: 10px; }
+            .action-btn { margin-right: 0; width: 100%; }
+        }
+
+        /* Custom Alerts for Shop Dashboard */
+        .shop-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+        }
+        .shop-modal-box {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            border: none;
+            border-radius: 12px;
+            padding: 20px 30px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 2001;
+            width: 90%;
+            max-width: 350px;
+        }
+        .shop-modal-box h3 {
+            color: #d2691e;
+            margin-top: 0;
+        }
+        .shop-modal-box button {
+            margin-top: 15px;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -526,11 +577,13 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
                         <?php
                         $counter = 1;
                         foreach ($grouped_orders as $key => $order):
-                            $order_time = date('d/m/Y H:i', $order['date']);
+                            $dParts = explode('-', $order['date']);
+                            $tParts = explode(':', $order['time']);
+                            $order_time = "{$dParts[2]}/{$dParts[1]}/{$dParts[0]} {$tParts[0]}:{$tParts[1]}";
                             $statusColor = $order['status'] == 'completed' ? '#d4edda' : '#f8f9fa'; // Green for completed, light gray for in-progress
                             ?>
                             <tr style="background-color: <?php echo $statusColor; ?>;">
-                                <td><?php echo $counter; ?></td>
+                                <td><?php echo $order['queue_number']; ?></td>
                                 <td><?php echo htmlspecialchars($order['username']); ?></td>
                                 <td><?php echo implode(', ', $order['items']); ?></td>
                                 <td><?php echo number_format($order['total']); ?> บาท</td>
@@ -541,10 +594,12 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
                                 <td>
                                     <?php if ($order['status'] != 'completed'): ?>
                                         <form method="POST"
-                                            onsubmit="return confirm('ยืนยันทำเครื่องหมายคำสั่งซื้อนี้เป็นเสร็จเรียบร้อย?');">
+                                            onsubmit="event.preventDefault(); var f = this; showCustomConfirm('ยืนยันทำเครื่องหมายคำสั่งซื้อนี้เป็นเสร็จเรียบร้อย?', function(){ f.submit(); });">
+                                            <input type="hidden" name="complete_order" value="1">
                                             <input type="hidden" name="userid" value="<?php echo $order['userid']; ?>">
                                             <input type="hidden" name="date" value="<?php echo $order['date']; ?>">
-                                            <button type="submit" name="complete_order"
+                                            <input type="hidden" name="time" value="<?php echo $order['time']; ?>">
+                                            <button type="submit"
                                                 style="background-color:#4CAF50;">เสร็จ</button>
                                         </form>
                                     <?php endif; ?>
@@ -598,7 +653,7 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
         }
 
         function deleteFood(foodId, foodName) {
-            if (confirm('แน่ใจว่าต้องการลบเมนู "' + foodName + '" นี้หรือไม่?')) {
+            showCustomConfirm('แน่ใจว่าต้องการลบเมนู "' + foodName + '" นี้หรือไม่?', function() {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.style.display = 'none';
@@ -617,7 +672,7 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
                 form.appendChild(inputDelete);
                 document.body.appendChild(form);
                 form.submit();
-            }
+            });
         }
 
         function cancelEdit() {
@@ -630,7 +685,31 @@ $pending_orders = $pending_query->fetch_assoc()['pending_count'];
             // ซ่อนฟอร์มแก้ไข
             document.getElementById('edit-form').style.display = 'none';
         }
+        function showCustomConfirm(msg, onConfirm) {
+            document.getElementById('customConfirmMessage').textContent = msg;
+            document.getElementById('customConfirmOverlay').style.display = 'block';
+            window.currentConfirmCallback = onConfirm;
+        }
+        function confirmCustomYes() {
+            document.getElementById('customConfirmOverlay').style.display = 'none';
+            if (window.currentConfirmCallback) window.currentConfirmCallback();
+        }
+        function confirmCustomNo() {
+            document.getElementById('customConfirmOverlay').style.display = 'none';
+        }
     </script>
+
+    <!-- Custom Modals -->
+    <div class="shop-modal-overlay" id="customConfirmOverlay">
+        <div class="shop-modal-box">
+            <h3>ยืนยันการดำเนินการ</h3>
+            <p id="customConfirmMessage" style="color: #333; font-size: 16px;"></p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="confirmCustomYes()" style="background-color: #2ecc71;">ยืนยัน</button>
+                <button onclick="confirmCustomNo()" style="background-color: #e74c3c;">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
