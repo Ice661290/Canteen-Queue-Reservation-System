@@ -83,3 +83,35 @@ A web application designed to facilitate food ordering and queue management with
   * Shows a list of orders grouped by customer and order time (Grouped Orders), allowing the shop to see exactly what items a specific customer ordered in a single bill.
   * Displays an "in progress" status and provides a "Complete" button.
   * Once marked as complete, the status updates, and the system immediately sends a notification signal to the student's side.
+
+## 🛠 Tools & Technologies
+
+* **Frontend** 
+
+| **HTML** | **CSS** | **JavaScript** |
+| :---: | :---: | :---: |
+| <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/html5/html5-original.svg" width="100" height="100"> | <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/css3/css3-original.svg" width="100" height="100"> | <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/javascript/javascript-original.svg" width="100" height="100"> |
+
+* **Backend**
+
+| **PHP** | 
+| :---: | 
+| <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/php/php-original.svg" width="100" height="100"> |
+
+* **Local Environment & Database**
+
+| **XAMPP** | **MySQL** |
+| :---: | :---: |
+| <img src="https://upload.wikimedia.org/wikipedia/commons/0/03/Xampp_logo.svg" width="100" height="100"> | <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mysql/mysql-original-wordmark.svg" width="100" height="100"> |
+* **Text Editor**
+  
+| **Vscode** | 
+| :---: | 
+| <a href="https://code.visualstudio.com/"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/vscode/vscode-original.svg" width="100" height="100"> |
+
+* **Other**
+  
+| **Git** | **Github** |
+| :---: | :---: |
+| <a href="https://git-scm.com/"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/git/git-original.svg" width="100" height="100"> | <a href="https://github.com/"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" width="100" height="100"> |
+
