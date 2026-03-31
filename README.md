@@ -4,6 +4,52 @@ A web application designed to facilitate food ordering and queue management with
 
 ---
 
+## 💻 Example Website
+
+ * Login
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 103258" src="https://github.com/user-attachments/assets/41c84f18-e51c-4acc-9108-a674df60a7ee" />
+
+* Register
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 110104" src="https://github.com/user-attachments/assets/74058dfd-c76c-4a68-9bad-bf0b04541230" />
+
+* Main
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 130557" src="https://github.com/user-attachments/assets/2f655684-ad25-421b-94d3-ede21f8172e7" />
+
+
+* Shop
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 104816" src="https://github.com/user-attachments/assets/7f5b4791-862b-4fe4-b18b-c17cce91f8b1" />
+
+
+* Basket
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 104651" src="https://github.com/user-attachments/assets/7ad3a81b-71a6-455b-aa6f-66ee6a053b34" />
+
+
+* Bill
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 104708" src="https://github.com/user-attachments/assets/2a3edeaa-3c61-4b2d-9975-ad0c8868c872" />
+
+* Order status
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 105009" src="https://github.com/user-attachments/assets/96a1f651-69b7-489f-89b7-950e906d03ee" />
+
+* Receipt history
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 105301" src="https://github.com/user-attachments/assets/4568ec50-d45f-45c6-b0d0-eecead5e2e26" />
+
+* Shop dashboard - In queue
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 105120" src="https://github.com/user-attachments/assets/e939a588-e040-49b7-916c-26509511c988" />
+
+* Shop dashboard - Add/Edit/Delete Food
+
+   <img width="2560" height="1440" alt="Screenshot 2026-03-31 105135" src="https://github.com/user-attachments/assets/1eff64af-1968-4cc6-a622-914b132115d8" />
+   
+
 ## 🌟 Features
 
 ### 1. 🔐 User Management (Authentication)
